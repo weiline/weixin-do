@@ -1,0 +1,5 @@
+#test{color:blue; text-align:center; width: 100%;}
+image{ width: 200rpx; height: 200rpx; margin: 0 auto;}
+button{ background: #CCC;}
+.box{ width: 250rpx; height:250rpx; background: #ccc;}
+.child{ width: 150rpx; height:150rpx; background: #111;}
