@@ -1,0 +1,171 @@
+常用的第三方css样式组件库：
+WeUI 是一套同微信原生视觉体验一致的基础样式库
+iView Weapp   微信小程序UI组件库
+Vant Weapp    轻量、可靠的小程序UI组件库
+
+点击事件：
+bindtap    不阻止事件冒泡
+catchtap  阻止事件冒泡
+------------------------------------云数据库-----------------------------------------------
+js文件中初始化云数据库
+const db=wx.cloud.database();
+
+在方法函数中引用云函数中的集合（仓库）
+db.collection('user') //手动在云开发中的数据库新建仓库'user'
+
+1.插入一条数据
+db.collection('user').add({
+     data: {
+        name:'jerry',
+        age:20
+     },
+     //成功回调
+     success: res => {
+        console.log(res);
+     },
+     //失败回调
+     fail: err =>{ 
+        console.log(err);
+     }
+})
+
+2.更新一条数据
+db.collection('user').doc('数据的id').update({
+     data:{
+         age=22
+      }
+}).then( res=>{ console.log(res)}).catch( err=>{ console.log(err)})//回调另一种写法
+
+3.查询数据
+db.collection('user').where({
+name='jerry'
+}).get().then( res=>{ console.log(res)}).catch( err=>{ console.log(err)})//回调
+
+4.删除一条数据
+db.collection('user')
+.doc('数据的id')
+.remove()
+.then( res=>{ console.log(res)})
+.catch( err=>{ console.log(err)})//回调
+
+------------------------------------云函数-------------------------------------------------
+新建一个云函数
+在当前目录下cloudfunctions上右击‘新建Node.js云函数’
+输入云函数的名称，等待完成。
+//可能遇到提示没有安装服务端SDK，确实安装就可以
+//或者在终端命令输入npm install --save wx-server-sdk@latest
+
+每一次修改完云函数下的index.js文件，都要手动右击此函数名，选择‘上传并部署’（不选所有文件，提高效率）
+
+在方法中调用云函数
+wx.cloud.callFunction({
+   name:'云数的名字'，
+   //要传递的数据
+   data:{
+      a:2,
+      b:3
+   }
+}).then(res=>{console.log(res)}).catch(err=>{console.log(err)})
+
+
+批量删除数据
+新建一个云函数，并进入index.js进行数据库初始化
+const db = cloud.database();
+
+在入口函数中关联数据库，以及条件删除
+return db.collection('user').where({
+         name: ''
+}).remove();
+
+====>进行异步处理，并try捕获异常:
+try {
+return await db.collection('user').where({
+         name: ''
+}).remove();
+}catch(e){
+   console.error(e);
+}
+
+------------------------------------云存储-------------------------------------------------
+
+wx.cloud.uploadFile 上传文件
+wx.cloud.downloadFile 下载文件
+wx.cloud.deleteFile 删除文件
+wx.cloud.getTempFileURL 获取临时链接
+
+上传文件功能：
+在方法中进行选择文件功能编辑    //在微信小程序开发文档中ctrl+f查找'choose',找到wx.chooseImage(Object object)
+wx.chooseImage({
+  count: 1,      //选择数量
+  sizeType: ['original', 'compressed'],     //大小类型，常态 或压缩
+  sourceType: ['album', 'camera'],          //来源
+  success (res) {
+    // tempFilePath可以作为img标签的src属性显示图片
+    const tempFilePaths = res.tempFilePaths   //生成的临时路径
+
+########################
+     云存储操作: //可以在官方文档中的‘云开发’下面找到‘存储’代码案例
+      wx.cloud.uploadFile({
+      // 指定上传到的云路径
+      cloudPath: 'my-photo.png',    //图片名写死了，可以写成当前时间秒数new Date().getTime() + '.png'
+      // 指定要上传的文件的小程序临时文件路径
+      filePath: tempFilePaths[0],
+      // 成功回调
+      success: res => {
+        console.log(res.fileID)
+--------------
+存入数据库：
+在数据库中，新建一个用来存储文件的库image
+db.collection('image').add({
+    data:{
+      fileID: res.fileID 
+     }
+}).then(res=>{console.log(res)}).catch(err=>{console.log(err)})
+
+--------------
+      },
+      fail:console.error
+    })
+#####################
+
+  }
+})
+
+展示文件功能：
+//先获取用户的OpenID,然后找到用户所传的图片路径，那么就用到云函数login
+wx.cloud.callFunction({
+      name:'login',
+}).then( res=>{
+               //成功回调，在数据库中查找对应的图片路径
+               db.collection('image').where({
+                        _openid: res.result.openid
+                   }).get().then( res2=>{
+                       console.log(res2);
+                        //赋值data
+                       this.setData({
+                             images: res2.data
+                               });
+                })
+            })
+
+
+图片下载功能》》》》
+给每张图片下载按钮添加data-fileid="{{item.fileID}}"
+
+wx.cloud.downloadFile({
+       fileID: event.target.dataset.fileid,//文件绑定的ID
+       success: res => {
+         //返回临时文件路径
+         console.log(res.tempFilePath)
+         //保存图片到手机相册
+         wx.saveImageToPhotosAlbum({
+           filePath: res.tempFilePath,
+           success(res){
+             wx.showToast({
+               title: '保存成功',
+             })
+           }
+         })
+       },
+       fail: console.error
+     })
